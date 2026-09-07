@@ -1,0 +1,4 @@
+{
+  "name": "agents-sdk-lab",
+  "install": "bash .cursor/install.sh"
+}
