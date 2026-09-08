@@ -256,7 +256,12 @@ export function ChatWorkspace({
       const payload = (await response.json().catch(() => null)) as {
         error?: string;
         message?: Message;
+        status?: "completed" | "in_progress";
       } | null;
+
+      if (response.status === 202 && payload?.status === "in_progress") {
+        return;
+      }
 
       if (!response.ok || !payload?.message) {
         throw new Error(payload?.error || "ไม่สามารถรับคำตอบจาก Agent ได้");
@@ -456,8 +461,7 @@ export function ChatWorkspace({
             ) : (
               <div className="mt-auto space-y-6">
                 {messages.map((message) => {
-                  const mine =
-                    message.user_id === user.id || message.role === "user";
+                  const mine = message.role === "user";
                   return (
                     <div
                       className={cn(

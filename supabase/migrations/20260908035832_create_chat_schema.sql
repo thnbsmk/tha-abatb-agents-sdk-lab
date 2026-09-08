@@ -22,13 +22,54 @@ create table public.messages (
   id uuid primary key default gen_random_uuid(),
   conversation_id uuid not null,
   user_id uuid not null references auth.users (id) on delete cascade,
+  reply_to_message_id uuid,
   role text not null check (role in ('user', 'assistant')),
   content text not null check (length(btrim(content)) > 0),
   created_at timestamptz not null default now(),
+  constraint messages_reply_role_check check (
+    (role = 'user' and reply_to_message_id is null)
+    or (role = 'assistant' and reply_to_message_id is not null)
+  ),
+  constraint messages_identity_owner_key
+    unique (id, conversation_id, user_id),
   constraint messages_conversation_owner_fkey
     foreign key (conversation_id, user_id)
     references public.conversations (id, user_id)
-    on delete cascade
+    on delete cascade,
+  constraint messages_reply_fkey
+    foreign key (reply_to_message_id, conversation_id, user_id)
+    references public.messages (id, conversation_id, user_id)
+    on delete restrict,
+  constraint messages_one_reply_per_user_message_key
+    unique (conversation_id, reply_to_message_id)
+);
+
+create table public.chat_requests (
+  conversation_id uuid not null,
+  user_message_id uuid not null,
+  user_id uuid not null references auth.users (id) on delete cascade,
+  status text not null default 'in_progress'
+    check (status in ('in_progress', 'completed')),
+  response_message_id uuid,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  primary key (conversation_id, user_message_id),
+  constraint chat_requests_conversation_owner_fkey
+    foreign key (conversation_id, user_id)
+    references public.conversations (id, user_id)
+    on delete cascade,
+  constraint chat_requests_user_message_fkey
+    foreign key (user_message_id, conversation_id, user_id)
+    references public.messages (id, conversation_id, user_id)
+    on delete cascade,
+  constraint chat_requests_response_message_fkey
+    foreign key (response_message_id, conversation_id, user_id)
+    references public.messages (id, conversation_id, user_id)
+    on delete restrict,
+  constraint chat_requests_completion_check check (
+    (status = 'in_progress' and response_message_id is null)
+    or (status = 'completed' and response_message_id is not null)
+  )
 );
 
 create index conversations_user_updated_idx
@@ -37,6 +78,8 @@ create index messages_conversation_created_idx
   on public.messages (conversation_id, created_at);
 create index messages_user_created_idx
   on public.messages (user_id, created_at desc);
+create index chat_requests_user_updated_idx
+  on public.chat_requests (user_id, updated_at desc);
 
 create function public.set_updated_at()
 returns trigger
@@ -55,6 +98,10 @@ for each row execute function public.set_updated_at();
 
 create trigger conversations_set_updated_at
 before update on public.conversations
+for each row execute function public.set_updated_at();
+
+create trigger chat_requests_set_updated_at
+before update on public.chat_requests
 for each row execute function public.set_updated_at();
 
 create function public.touch_conversation_after_message()
@@ -112,6 +159,7 @@ on conflict (id) do nothing;
 alter table public.profiles enable row level security;
 alter table public.conversations enable row level security;
 alter table public.messages enable row level security;
+alter table public.chat_requests enable row level security;
 
 create policy "Users manage only their own profile"
 on public.profiles
@@ -134,10 +182,19 @@ to authenticated
 using ((select auth.uid()) = user_id)
 with check ((select auth.uid()) = user_id);
 
+create policy "Users manage only their own chat requests"
+on public.chat_requests
+for all
+to authenticated
+using ((select auth.uid()) = user_id)
+with check ((select auth.uid()) = user_id);
+
 revoke all on table public.profiles from anon;
 revoke all on table public.conversations from anon;
 revoke all on table public.messages from anon;
+revoke all on table public.chat_requests from anon;
 
 grant select, insert, update, delete on table public.profiles to authenticated;
 grant select, insert, update, delete on table public.conversations to authenticated;
 grant select, insert, update, delete on table public.messages to authenticated;
+grant select, insert, update, delete on table public.chat_requests to authenticated;
