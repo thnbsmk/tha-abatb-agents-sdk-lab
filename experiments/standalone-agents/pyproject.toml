@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agents-lab"
+version = "0.1.0"
+description = "A minimal, self-contained lab for experimenting with tool-calling agents."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.6",
+    "mypy>=1.11",
+]
+
+[project.scripts]
+agents-lab = "agents_lab.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+agents_lab = ["py.typed"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.mypy]
+python_version = "3.10"
+packages = ["agents_lab"]
+mypy_path = "src"
+disallow_untyped_defs = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+ignore_missing_imports = true

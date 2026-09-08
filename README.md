@@ -65,4 +65,12 @@ src/agents_lab/
   demo.py          # runnable end-to-end demo
 tests/             # offline unit + end-to-end agent tests
 scripts/install.sh # idempotent environment setup
+experiments/
+  offline-sdk/      # complete original 2530 branch snapshot
+  standalone-agents/ # complete original bcf7 zero-dependency snapshot
 ```
+
+The root package is the maintained, consolidated implementation. The
+`experiments/` directories preserve the other original branch implementations
+without mixing their incompatible package APIs into the root application. Each
+snapshot includes its own README, package configuration, source, and tests.
