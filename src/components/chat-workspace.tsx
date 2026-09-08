@@ -9,9 +9,11 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  DEFAULT_XAI_MODEL,
+  HUB_CONVERSATION_TITLE,
+} from "@/lib/chat-constants";
 import { cn } from "@/lib/utils";
-
-const HUB_CONVERSATION_TITLE = "Chat Hub";
 
 type Row = Record<string, unknown>;
 
@@ -61,8 +63,7 @@ export function ChatWorkspace({
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const profileName =
-    (profile?.full_name as string | undefined) ||
-    (profile?.username as string | undefined) ||
+    (profile?.display_name as string | undefined) ||
     user.email?.split("@")[0] ||
     "สมาชิก";
 
@@ -174,6 +175,7 @@ export function ChatWorkspace({
         .insert({
           user_id: user.id,
           title: HUB_CONVERSATION_TITLE,
+          model_label: DEFAULT_XAI_MODEL,
         })
         .select("*")
         .single();
