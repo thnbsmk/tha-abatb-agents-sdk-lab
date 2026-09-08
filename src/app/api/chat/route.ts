@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { chatAgent } from "@/lib/agent";
+import { ensureXaiProvider } from "@/lib/xai";
 
 import { resolveChatRequest, type ChatDb } from "./resolve";
 
@@ -33,9 +34,18 @@ export async function POST(request: Request) {
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!supabaseUrl || !supabaseAnonKey || !process.env.OPENAI_API_KEY) {
+  if (!supabaseUrl || !supabaseAnonKey || !process.env.XAI_API_KEY?.trim()) {
     return NextResponse.json(
       { error: "Server environment is not configured" },
+      { status: 500 },
+    );
+  }
+
+  try {
+    ensureXaiProvider();
+  } catch {
+    return NextResponse.json(
+      { error: "xAI provider is not configured" },
       { status: 500 },
     );
   }
