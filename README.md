@@ -67,11 +67,18 @@ Migration ถอนสิทธิ์ของ role `anon` จากทุกต
 ระบบไม่สร้าง mock/fake AI response และ Agent จะไม่กล่าวอ้างว่างานภายนอกสำเร็จ
 หากไม่มีหลักฐานในบทสนทนา
 
+## Single-room chat hub
+
+ผู้ใช้แต่ละคนมีห้องสนทนาเดียวชื่อ `Chat Hub` แทนการสร้างหลายบทสนทนา
+ข้อความทั้งหมดซิงก์ผ่าน Supabase และ Agent ตอบผ่าน `POST /api/chat`
+
 ## คำสั่งตรวจสอบ
 
 ```bash
 npm run lint
 npm run type-check
 npm run build
+node --test tests/free-model.mjs
+npm test
 git diff --check
 ```

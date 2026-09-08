@@ -1,16 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
-import {
-  FlaskConical,
-  Loader2,
-  LogOut,
-  Menu,
-  MessageSquarePlus,
-  Send,
-  X,
-} from "lucide-react";
+import { FlaskConical, Loader2, LogOut, Menu, Send, X } from "lucide-react";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -18,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+
+const HUB_CONVERSATION_TITLE = "Chat Hub";
 
 type Row = Record<string, unknown>;
 
@@ -55,8 +49,9 @@ export function ChatWorkspace({
   user,
 }: ChatWorkspaceProps) {
   const [profile, setProfile] = useState<Row | null>(null);
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [hubConversationId, setHubConversationId] = useState<string | null>(
+    null,
+  );
   const [messages, setMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState("");
   const [loading, setLoading] = useState(true);
@@ -64,11 +59,6 @@ export function ChatWorkspace({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
-
-  const selectedConversation = useMemo(
-    () => conversations.find((conversation) => conversation.id === selectedId),
-    [conversations, selectedId],
-  );
 
   const profileName =
     (profile?.full_name as string | undefined) ||
@@ -105,7 +95,9 @@ export function ChatWorkspace({
           .from("conversations")
           .select("*")
           .eq("user_id", user.id)
-          .order("updated_at", { ascending: false }),
+          .eq("title", HUB_CONVERSATION_TITLE)
+          .order("created_at", { ascending: true })
+          .limit(1),
       ]);
 
       if (profileResult.error) {
@@ -117,11 +109,12 @@ export function ChatWorkspace({
       if (conversationsResult.error) {
         setError(conversationsResult.error.message);
       } else {
-        const rows = (conversationsResult.data ?? []) as Conversation[];
-        setConversations(rows);
-        if (rows[0]) {
-          setSelectedId(rows[0].id);
-          await loadMessages(rows[0].id);
+        const hub = (conversationsResult.data?.[0] ?? null) as
+          | Conversation
+          | null;
+        if (hub) {
+          setHubConversationId(hub.id);
+          await loadMessages(hub.id);
         }
       }
       setLoading(false);
@@ -131,37 +124,30 @@ export function ChatWorkspace({
   }, [loadMessages, supabase, user.id]);
 
   useEffect(() => {
-    if (!selectedId) return;
+    if (!hubConversationId) return;
 
     const channel = supabase
-      .channel(`messages:${selectedId}`)
+      .channel(`messages:${hubConversationId}`)
       .on(
         "postgres_changes",
         {
           event: "*",
           schema: "public",
           table: "messages",
-          filter: `conversation_id=eq.${selectedId}`,
+          filter: `conversation_id=eq.${hubConversationId}`,
         },
-        () => void loadMessages(selectedId),
+        () => void loadMessages(hubConversationId),
       )
       .subscribe();
 
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [loadMessages, selectedId, supabase]);
+  }, [hubConversationId, loadMessages, supabase]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
-
-  function startNewConversation() {
-    setError(null);
-    setSelectedId(null);
-    setMessages([]);
-    setSidebarOpen(false);
-  }
 
   async function sendMessage(event: React.FormEvent) {
     event.preventDefault();
@@ -181,13 +167,13 @@ export function ChatWorkspace({
       return;
     }
 
-    let conversationId = selectedId;
+    let conversationId = hubConversationId;
     if (!conversationId) {
       const { data, error: conversationError } = await supabase
         .from("conversations")
         .insert({
           user_id: user.id,
-          title: content.slice(0, 48),
+          title: HUB_CONVERSATION_TITLE,
         })
         .select("*")
         .single();
@@ -200,8 +186,7 @@ export function ChatWorkspace({
 
       const conversation = data as Conversation;
       conversationId = conversation.id;
-      setConversations((current) => [conversation, ...current]);
-      setSelectedId(conversation.id);
+      setHubConversationId(conversation.id);
     }
 
     const { data: savedMessage, error: messageError } = await supabase
@@ -228,18 +213,6 @@ export function ChatWorkspace({
       return [...current, savedMessage as Message];
     });
     setDraft("");
-    setConversations((current) => {
-      const active = current.find(
-        (conversation) => conversation.id === conversationId,
-      );
-      if (!active) return current;
-      return [
-        active,
-        ...current.filter(
-          (conversation) => conversation.id !== conversationId,
-        ),
-      ];
-    });
 
     try {
       const response = await fetch("/api/chat", {
@@ -309,51 +282,18 @@ export function ChatWorkspace({
         </Button>
       </div>
 
-      <div className="p-4">
-        <Button
-          className="w-full justify-start bg-[#f3d4aa] text-[#14382f] hover:bg-[#ffe0b6]"
-          onClick={startNewConversation}
-        >
-          <MessageSquarePlus />
-          บทสนทนาใหม่
-        </Button>
-      </div>
-
-      <ScrollArea className="min-h-0 flex-1 px-3">
-        <p className="px-2 pb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/45">
-          บทสนทนาของฉัน
+      <div className="flex min-h-0 flex-1 flex-col px-5 py-6">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/45">
+          Single-room hub
         </p>
-        <div className="space-y-1 pb-4">
-          {conversations.map((conversation) => (
-            <button
-              className={cn(
-                "w-full rounded-xl px-3 py-3 text-left text-sm transition-colors",
-                selectedId === conversation.id
-                  ? "bg-white/12 text-white"
-                  : "text-white/68 hover:bg-white/7 hover:text-white",
-              )}
-              key={conversation.id}
-              onClick={() => {
-                setSelectedId(conversation.id);
-                void loadMessages(conversation.id);
-                setSidebarOpen(false);
-              }}
-              type="button"
-            >
-              <span className="block truncate">
-                {conversation.title || "ไม่มีชื่อ"}
-              </span>
-            </button>
-          ))}
-          {!loading && conversations.length === 0 && (
-            <p className="px-3 py-8 text-center text-xs leading-5 text-white/45">
-              ยังไม่มีบทสนทนา
-              <br />
-              เริ่มส่งข้อความได้เลย
-            </p>
-          )}
-        </div>
-      </ScrollArea>
+        <h2 className="mt-2 font-serif text-2xl font-semibold text-white">
+          {HUB_CONVERSATION_TITLE}
+        </h2>
+        <p className="mt-3 text-sm leading-6 text-white/62">
+          ผู้ใช้แต่ละคนมีห้องสนทนาเดียว ข้อความทั้งหมดซิงก์ผ่าน Supabase และ
+          Agent ตอบผ่าน API route ฝั่ง server
+        </p>
+      </div>
 
       <div className="border-t border-white/10 p-4">
         <div className="flex items-center gap-3">
@@ -409,10 +349,10 @@ export function ChatWorkspace({
           </Button>
           <div className="min-w-0">
             <h1 className="truncate font-serif text-xl font-semibold text-[#1d312b]">
-              {selectedConversation?.title || "พื้นที่สนทนาใหม่"}
+              {HUB_CONVERSATION_TITLE}
             </h1>
             <p className="text-xs text-[#74807b]">
-              บันทึกและซิงก์ผ่าน Supabase
+              ห้องสนทนาเดียวต่อผู้ใช้ · บันทึกและซิงก์ผ่าน Supabase
             </p>
           </div>
           <span className="ml-auto flex items-center gap-2 text-xs text-[#60736c]">
@@ -452,9 +392,8 @@ export function ChatWorkspace({
                     เริ่มทดลองไอเดีย
                   </h2>
                   <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-[#6e7974]">
-                    ส่งข้อความแรกเพื่อสร้างบทสนทนา
-                    ทุกข้อความจะถูกบันทึกลงตาราง conversations และ messages
-                    ของคุณ
+                    ส่งข้อความแรกเพื่อเปิดห้อง {HUB_CONVERSATION_TITLE}
+                    ทุกข้อความจะถูกบันทึกลง conversations และ messages ของคุณ
                   </p>
                 </div>
               </div>
