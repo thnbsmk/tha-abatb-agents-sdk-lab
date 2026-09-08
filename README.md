@@ -52,7 +52,8 @@ npx supabase@latest start
 npx supabase@latest db reset
 ```
 
-Migration ถอนสิทธิ์ของ role `anon` จากทั้งสามตาราง ผู้ใช้ที่ authenticated
+Migration ถอนสิทธิ์ของ role `anon` จากทุกตารางของแชต (`profiles`,
+`conversations`, `messages`, `chat_requests`) ผู้ใช้ที่ authenticated
 อ่านและเขียนได้เฉพาะแถวที่ `user_id` ตรงกับ `auth.uid()` เท่านั้น
 
 ## การทำงานของแชต
