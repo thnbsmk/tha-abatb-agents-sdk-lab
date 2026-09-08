@@ -49,7 +49,7 @@ create table public.chat_requests (
   user_message_id uuid not null,
   user_id uuid not null references auth.users (id) on delete cascade,
   status text not null default 'in_progress'
-    check (status in ('in_progress', 'completed')),
+    check (status in ('in_progress', 'completed', 'failed')),
   response_message_id uuid,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
@@ -67,7 +67,7 @@ create table public.chat_requests (
     references public.messages (id, conversation_id, user_id)
     on delete restrict,
   constraint chat_requests_completion_check check (
-    (status = 'in_progress' and response_message_id is null)
+    (status in ('in_progress', 'failed') and response_message_id is null)
     or (status = 'completed' and response_message_id is not null)
   )
 );
