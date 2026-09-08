@@ -1,11 +1,16 @@
 """Unit tests for the lab's tool logic (plain functions behind the tools)."""
 
-from agents_lab.tools import add, get_weather
+from agents_lab.tools import add, get_weather, multiply
 
 
 def test_add():
     assert add(2, 3) == 5
     assert add(-1.5, 2.5) == 1.0
+
+
+def test_multiply():
+    assert multiply(6, 7) == 42
+    assert multiply(-2.5, 4) == -10.0
 
 
 def test_get_weather_known_city():

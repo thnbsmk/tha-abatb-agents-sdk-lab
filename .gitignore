@@ -2,7 +2,11 @@
 __pycache__/
 *.py[cod]
 *.egg-info/
+.eggs/
+build/
+dist/
 .pytest_cache/
+.mypy_cache/
 .ruff_cache/
 
 # Virtual environments
@@ -14,3 +18,9 @@ venv/
 
 # Env / secrets
 .env
+.env.*
+!.env.example
+
+# JavaScript build artifacts (if examples are added later)
+node_modules/
+.next/

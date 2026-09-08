@@ -23,10 +23,16 @@ def add(a: float, b: float) -> float:
     return a + b
 
 
+def multiply(a: float, b: float) -> float:
+    """Multiply two numbers and return the product."""
+    return a * b
+
+
 def get_weather(city: str) -> str:
     """Return a short weather report for the given city."""
     return _FAKE_WEATHER.get(city.strip().lower(), f"No forecast available for {city}.")
 
 
 add_tool = function_tool(add)
+multiply_tool = function_tool(multiply)
 get_weather_tool = function_tool(get_weather)

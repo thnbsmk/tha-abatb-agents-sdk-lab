@@ -1,11 +1,11 @@
 [project]
 name = "agents-sdk-lab"
 version = "0.1.0"
-description = "A hands-on lab for experimenting with the OpenAI Agents SDK."
+description = "A hands-on lab for the OpenAI Agents SDK, runnable fully offline."
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "openai-agents>=0.2.0",
+    "openai-agents>=0.22.0",
 ]
 
 [project.optional-dependencies]
@@ -16,7 +16,7 @@ dev = [
 ]
 
 [project.scripts]
-agents-lab-demo = "agents_lab.demo:main"
+agents-lab = "agents_lab.demo:main"
 
 [build-system]
 requires = ["hatchling"]

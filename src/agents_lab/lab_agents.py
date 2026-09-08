@@ -16,7 +16,7 @@ from __future__ import annotations
 from agents import Agent
 from agents.models.interface import Model
 
-from .tools import add_tool, get_weather_tool
+from .tools import add_tool, get_weather_tool, multiply_tool
 
 
 def build_weather_specialist(model: Model | str | None = None) -> Agent:
@@ -42,10 +42,10 @@ def build_triage_agent(model: Model | str | None = None) -> Agent:
     return Agent(
         name="Triage Agent",
         instructions=(
-            "You are a helpful assistant. Use the add tool for arithmetic. "
+            "You are a helpful assistant. Use add or multiply for arithmetic. "
             "For anything about the weather, hand off to the Weather Specialist."
         ),
-        tools=[add_tool],
+        tools=[add_tool, multiply_tool],
         handoffs=[specialist],
         model=model,
     )
