@@ -170,6 +170,17 @@ export function ChatWorkspace({
 
     setSending(true);
     setError(null);
+
+    const {
+      data: { session },
+      error: sessionError,
+    } = await supabase.auth.getSession();
+    if (sessionError || !session?.access_token) {
+      setError(sessionError?.message || "เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่");
+      setSending(false);
+      return;
+    }
+
     let conversationId = selectedId;
     if (!conversationId) {
       const { data, error: conversationError } = await supabase
@@ -230,7 +241,47 @@ export function ChatWorkspace({
       ];
     });
 
-    setSending(false);
+    try {
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          conversationId,
+          userMessageId: savedMessage.id,
+        }),
+      });
+      const payload = (await response.json().catch(() => null)) as {
+        error?: string;
+        message?: Message;
+        status?: "completed" | "in_progress";
+      } | null;
+
+      if (response.status === 202 && payload?.status === "in_progress") {
+        return;
+      }
+
+      if (!response.ok || !payload?.message) {
+        throw new Error(payload?.error || "ไม่สามารถรับคำตอบจาก Agent ได้");
+      }
+
+      setMessages((current) => {
+        if (current.some((message) => message.id === payload.message?.id)) {
+          return current;
+        }
+        return [...current, payload.message as Message];
+      });
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : "ไม่สามารถรับคำตอบจาก Agent ได้",
+      );
+    } finally {
+      setSending(false);
+    }
   }
 
   const sidebar = (
@@ -410,8 +461,7 @@ export function ChatWorkspace({
             ) : (
               <div className="mt-auto space-y-6">
                 {messages.map((message) => {
-                  const mine =
-                    message.user_id === user.id || message.role === "user";
+                  const mine = message.role === "user";
                   return (
                     <div
                       className={cn(

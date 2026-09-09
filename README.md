@@ -1,25 +1,29 @@
 # AGENTS-SDK-LAB
 
-เว็บแอป Next.js + TypeScript สำหรับล็อกอินและบันทึกบทสนทนาจริงใน Supabase
+เว็บแอป Next.js + TypeScript ที่ใช้ Supabase Auth/RLS เก็บบทสนทนาจริง และเรียก
+OpenAI Agents SDK เฉพาะใน API route ฝั่ง server
 
 ## การตั้งค่า
 
-ต้องใช้ Node.js 20.9 ขึ้นไป จากนั้นติดตั้ง dependencies:
+ต้องใช้ Node.js 22 ขึ้นไป จากนั้นติดตั้ง dependencies:
 
 ```bash
 npm install
 cp .env.example .env.local
 ```
 
-กำหนด `NEXT_PUBLIC_SUPABASE_ANON_KEY` ใน `.env.local` เป็น anon key หรือ
-publishable key ของโปรเจกต์ Supabase นี้:
+กำหนดค่าใน `.env.local` โดยใช้ anon key หรือ publishable key ของ Supabase
+และ OpenAI API key สำหรับ server:
 
 ```env
 NEXT_PUBLIC_SUPABASE_URL=https://jwnbaidkwubbfqfwmcan.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_or_publishable_key
+OPENAI_API_KEY=your_server_only_openai_api_key
 ```
 
-ห้ามใช้ `service_role` key ในแอปฝั่ง browser
+ห้ามนำ `OPENAI_API_KEY` ไปใช้ใน Client Component และห้ามใช้หรือเพิ่ม
+Supabase `service_role` key ในโปรเจกต์นี้ API route ใช้ anon key ร่วมกับ access
+token ของผู้ใช้ เพื่อให้ RLS ทำงานทุก query
 
 จากนั้นรัน:
 
@@ -29,21 +33,39 @@ npm run dev
 
 เปิด http://localhost:43127
 
-## ตารางที่ใช้
+## สร้างฐานข้อมูล
 
-แอปใช้ตารางเดิมโดยตรงและไม่ได้สร้างข้อมูลจำลอง:
+Migration อยู่ที่ `supabase/migrations/*_create_chat_schema.sql` และสร้างตาราง
+foreign keys, indexes, triggers และ RLS policies ที่จำเป็นทั้งหมด
 
-- `conversations`: อ่าน/สร้างด้วย `id`, `user_id`, `title`, `created_at`, `updated_at`
-- `messages`: อ่าน/สร้างด้วย `id`, `conversation_id`, `user_id`, `role`, `content`, `created_at`
+สำหรับ Supabase project ที่ link แล้ว:
 
-Supabase ต้องเปิด Email/Password authentication และกำหนด Row Level Security policies
-ให้ผู้ใช้ที่ล็อกอินอ่านและสร้างได้เฉพาะแถวของตนเอง แอปส่ง access token ของผู้ใช้
-ไปกับทุก query และไม่ใช้ `service_role` เพื่อข้าม RLS หาก schema ของตารางเดิมใช้ชื่อ
-คอลัมน์ต่างจากรายการข้างต้น ให้ปรับ query ใน
-`src/components/chat-workspace.tsx` ให้ตรงกับ schema จริง
+```bash
+npx supabase@latest link --project-ref YOUR_PROJECT_REF
+npx supabase@latest db push
+```
 
-โปรเจกต์นี้ยังไม่เชื่อม AI provider ข้อความที่ผู้ใช้ส่งจะถูกบันทึกจริงใน Supabase
-โดยไม่มีการสร้างคำตอบจำลอง
+สำหรับฐานข้อมูล local:
+
+```bash
+npx supabase@latest start
+npx supabase@latest db reset
+```
+
+Migration ถอนสิทธิ์ของ role `anon` จากทุกตารางของแชต (`profiles`,
+`conversations`, `messages`, `chat_requests`) ผู้ใช้ที่ authenticated
+อ่านและเขียนได้เฉพาะแถวที่ `user_id` ตรงกับ `auth.uid()` เท่านั้น
+
+## การทำงานของแชต
+
+1. Client บันทึกข้อความผู้ใช้จริงผ่าน Supabase และ RLS
+2. Client ส่ง access token, conversation ID และ message ID ไป `POST /api/chat`
+3. Server ตรวจ token และสิทธิ์เจ้าของข้อมูล แล้วอ่านประวัติล่าสุดไม่เกิน 20 ข้อความ
+4. Agent `AGENTS-SDK-LAB` สร้างคำตอบจริงโดยตอบภาษาเดียวกับข้อความล่าสุด
+5. Server บันทึกคำตอบจริงลง `messages` ก่อนส่งแถวนั้นกลับไปแสดงผล
+
+ระบบไม่สร้าง mock/fake AI response และ Agent จะไม่กล่าวอ้างว่างานภายนอกสำเร็จ
+หากไม่มีหลักฐานในบทสนทนา
 
 ## คำสั่งตรวจสอบ
 
@@ -51,4 +73,5 @@ Supabase ต้องเปิด Email/Password authentication และกำ�
 npm run lint
 npm run type-check
 npm run build
+git diff --check
 ```
