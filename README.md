@@ -33,7 +33,6 @@ npm run dev
 
 แอปใช้ตารางเดิมโดยตรงและไม่ได้สร้างข้อมูลจำลอง:
 
-- `profiles`: อ่านโปรไฟล์ด้วย `id` ที่ตรงกับ Auth user
 - `conversations`: อ่าน/สร้างด้วย `id`, `user_id`, `title`, `created_at`, `updated_at`
 - `messages`: อ่าน/สร้างด้วย `id`, `conversation_id`, `user_id`, `role`, `content`, `created_at`
 
