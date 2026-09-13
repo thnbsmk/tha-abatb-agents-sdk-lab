@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "type-check": "next typegen && tsc --noEmit",
-    "test": "node --import tsx --test tests/*.test.ts"
+    "test": "node --import tsx --test tests/*.test.ts",
+    "agents:github-issue": "bash scripts/github-issue-investigator/run.sh"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",

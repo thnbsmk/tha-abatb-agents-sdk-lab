@@ -20,6 +20,9 @@
 # production
 /build
 
+# agents api runner state
+/scripts/github-issue-investigator/.run/
+
 # misc
 .DS_Store
 *.pem
